@@ -1,0 +1,117 @@
+
+join을 쓰는 이유 여러 테이블을 연결해서 보거나 사용할 수 있다.
+기준이 있어야 쓸 수 있다.(두개의 테이블에 공통된 컬럼이 있어야한다.
+left join, inner join
+테이블은 정보는 결제정보끼리 회원은 회원정보끼리 묶어서 저장해 두는 것이 동작하거나
+수정하기 편리하다.
+
+left join은 A에 B를 붙여라
+select * from users u
+left join point_users pu
+on u.user_id = pu.user_id
+
+교집합으로 point_user_id A랑 B에 있는 것들만 붙여라.
+select * from users u
+inner join point_users pu
+on u.user_id = pu.user_id
+
+
+select * from orders o 
+inner join users u
+on u.user_id = o.user_id 
+
+select * from checkins c 
+inner join users u  
+on c.user_id = u.user_id 
+
+select * from enrolleds e  
+inner join courses c 
+on e.course_id = c.course_id 
+
+checkins 테이블에 courses 테이블을 연결해서 앱개발 종합반 웹개발 종합반 카운트하기
+select c1.course_id, c2.title, count(*) as cnt from checkins c1
+inner join courses c2 on c1.course_id = c2.course_id 
+group by c1.course_id
+
+4개의 칼럼만 정렬된 내용을 보고싶을시
+select pu.user_id, u.name, u.email, pu.point from point_users pu 
+inner join users u 
+on pu.user_id = u.user_id 
+order by pu.point desc 
+
+select u.name, count(*) as cnt from orders o 
+inner join users u on o.user_id = u.user_id 
+where u.email like '%naver.com'
+group by u.name
+
+평균값을 낼시 group by를 해줘야 전체가 아니라 그 칼럼의 내용 unique에 따라 평균값이 나온다.
+select o.payment_method, ROUND(avg(pu.point), 3) as avg_point from point_users pu 
+inner join orders o on pu.user_id = o.user_id 
+group by o.payment_method  
+
+
+
+select u.name, count(*) as cnt from enrolleds e 
+inner join users u on e.user_id = u.user_id 
+where e.is_registered = 0 
+group by u.name 
+order by cnt desc
+
+select c.course_id, c.title, count(*) as cnt from courses c  
+inner join enrolleds e on c.course_id = e.course_id 
+where e.is_registered =0
+group by c.course_id
+
+두 개의 필드를 group by해서 체크인 수 세어보기
+select c1.title, c2.week, count(*) as cnt from courses c1 
+inner join checkins c2 on c1.course_id = c2.course_id
+group by c1.title, c2.week
+order by c1.title, c2.week
+
+join 2번 해보기
+select c1.title, c2.week, count(*) as cnt from courses c1 
+inner join checkins c2 on c1.course_id = c2.course_id 
+inner join orders o on c2.user_id = o.user_id 
+where o.created_at >= '2020-08-01'
+group by c1.title, c2.week 
+order by c1.title, c2.week
+
+
+left join 하기 어디에 무엇을 붙일 것 인지가 중요하다.
+
+2020 7월 10일 ~ 7월 20일 이내에 포인트 가 있는 유저와 전체유저 그리고 비율을 알고싶다.
+
+#여기서 많이 해매었고 결국 세번째를 못했다. select절안에서 이렇게 하면 된다는걸 알았다.
+
+select count(pu.point_user_id) as pnt_user_nct,
+	count(u.user_id) as tot_user_cnt,
+	round(count(pu.point_user_id)/count(u.user_id), 2) as ratio
+	from users u
+left join point_users pu on u.user_id = pu.user_id 
+where u.created_at BETWEEN '2020-07-10' AND '2020-07-20' 
+
+
+
+union 하는법 그리고 union 안에서는 order by가 되지않고
+아래에서 다시 정렬을 해야지 한다(서브쿼리)
+(
+	select '7월' as month, c1.title, c2.week, count(*) as cnt from courses c1
+	inner join checkins c2 on c1.course_id = c2.course_id
+	inner join orders o on c2.user_id = o.user_id
+	where o.created_at < '2020-08-01'
+	group by c1.title, c2.week 
+)
+union ALL (
+	select '8월' as month, c1.title, c2.week, count(*) as cnt from courses c1
+	inner join checkins c2 on c1.course_id = c2.course_id
+	inner join orders o on c2.user_id = o.user_id
+	where o.created_at >= '2020-08-01'
+	group by c1.title, c2.week 
+)
+
+SELECT e.enrolled_id, e.user_id, count(ed.done) as max_count from enrolleds e 
+inner join enrolleds_detail ed on e.enrolled_id = ed.enrolled_id 
+where ed.done = 1 
+group by e.enrolled_id 
+order by max_count DESC
+
